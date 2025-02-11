@@ -9,57 +9,63 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
-import androidx.navigation.compose.rememberNavController
+import androidx.navigation.compose.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-// Data class for a quiz question.
+// --- Data Model for a Quiz Question ---
 data class Question(
     val id: Int,
-    val noteResource: Int,  // Drawable resource for the Treble Clef note image.
+    val noteResource: Int,  // Drawable resource for the Treble Clef note.
     val options: List<String>,
     val correctAnswer: String
 )
 
-// Data class for a leaderboard entry.
-data class LeaderboardEntry(
-    val name: String,
-    val score: Int
-)
+// --- Data Model for a Leaderboard Entry ---
+data class LeaderboardEntry(val name: String, val score: Int)
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            // Wrap our app in MaterialTheme (using Material3).
             MaterialTheme {
-                // Create a NavController for navigation between screens.
                 val navController = rememberNavController()
-                // In-memory state to track the user's score.
-                var userScore by remember { mutableIntStateOf(0) }
+                val context = LocalContext.current
 
-                // Define our navigation graph with three routes.
+                // Retrieve the current profile from persistent storage.
+                val currentProfileId = ProfileRepository.getCurrentProfileId(context)
+                var userProfile by remember { mutableStateOf(ProfileRepository.getProfileById(context, currentProfileId)) }
+
+                // Navigation graph: Welcome, Quiz, and Leaderboard screens.
                 NavHost(navController = navController, startDestination = "welcome") {
                     composable("welcome") {
-                        WelcomeScreen(onStartClicked = { navController.navigate("quiz") })
+                        WelcomeScreen(userProfile?.name ?: "User", onStartClicked = {
+                            navController.navigate("quiz")
+                        })
                     }
                     composable("quiz") {
                         QuizScreen(
-                            onQuizFinished = { navController.navigate("leaderboard") },
-                            updateScore = { points -> userScore += points }
+                            onQuizFinished = {
+                                // Refresh the profile after the quiz.
+                                userProfile = ProfileRepository.getProfileById(context, currentProfileId)
+                                navController.navigate("leaderboard")
+                            },
+                            updateScore = { points ->
+                                // Update the profile's score both in memory and in persistent storage.
+                                val updatedScore = (userProfile?.score ?: 0) + points
+                                userProfile = userProfile?.copy(score = updatedScore)
+                                userProfile?.let { ProfileRepository.updateProfileScore(context, it.id, updatedScore) }
+                            }
                         )
                     }
                     composable("leaderboard") {
                         LeaderboardScreen(
-                            userScore = userScore,
+                            userProfile = userProfile,
                             onRestartClicked = {
-                                // Reset the score and navigate back to Welcome.
-                                userScore = 0
                                 navController.navigate("welcome") {
                                     popUpTo("welcome") { inclusive = true }
                                 }
@@ -73,8 +79,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun WelcomeScreen(onStartClicked: () -> Unit) {
-    // A simple welcome screen with a greeting and a "Start" button.
+fun WelcomeScreen(userName: String, onStartClicked: () -> Unit) {
     Scaffold { paddingValues ->
         Column(
             modifier = Modifier
@@ -84,8 +89,8 @@ fun WelcomeScreen(onStartClicked: () -> Unit) {
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(text = "Welcome back, User", fontSize = 24.sp)
-            Spacer(modifier = Modifier.height(24.dp))
+            Text("Welcome back, $userName", fontSize = 24.sp)
+            Spacer(modifier = Modifier.height(16.dp))
             Button(onClick = onStartClicked) {
                 Text("Start")
             }
@@ -99,7 +104,7 @@ fun QuizScreen(
     onQuizFinished: () -> Unit,
     updateScore: (Int) -> Unit
 ) {
-    // Create 10 quiz questions using Treble Clef note positions.
+    // Define 10 quiz questions with Treble Clef note images.
     val questions = listOf(
         Question(
             id = 1,
@@ -163,24 +168,19 @@ fun QuizScreen(
         )
     )
 
-    // Track the current question index and whether the user has already attempted the current question.
     var currentQuestionIndex by remember { mutableStateOf(0) }
     var hasAttempted by remember { mutableStateOf(false) }
     var resultMessage by remember { mutableStateOf("") }
     val coroutineScope = rememberCoroutineScope()
 
-    // If all questions have been answered, navigate to the leaderboard.
     if (currentQuestionIndex >= questions.size) {
         LaunchedEffect(Unit) { onQuizFinished() }
         return
     }
-
     val currentQuestion = questions[currentQuestionIndex]
 
     Scaffold(
-        topBar = {
-            TopAppBar(title = { Text("Quiz") })
-        }
+        topBar = { TopAppBar(title = { Text("Quiz") }) }
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -190,24 +190,20 @@ fun QuizScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            // Show the Treble Clef note image.
             Image(
                 painter = painterResource(id = currentQuestion.noteResource),
                 contentDescription = "Treble Clef Note",
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.size(250.dp)
             )
             Spacer(modifier = Modifier.height(24.dp))
-
-            // Render each multiple-choice option as a button.
             currentQuestion.options.forEach { option ->
                 Button(
                     onClick = {
-                        // Only process the first attempt for each question.
                         if (!hasAttempted) {
                             hasAttempted = true
                             if (option == currentQuestion.correctAnswer) {
                                 resultMessage = "Correct!"
-                                updateScore(10)  // Award 10 points on first-try success.
+                                updateScore(10)
                                 coroutineScope.launch {
                                     delay(1000L)
                                     currentQuestionIndex++
@@ -232,8 +228,6 @@ fun QuizScreen(
                     Text(option)
                 }
             }
-
-            // Display the feedback message.
             if (resultMessage.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(resultMessage)
@@ -244,27 +238,21 @@ fun QuizScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LeaderboardScreen(
-    userScore: Int,
-    onRestartClicked: () -> Unit
-) {
-    // Dummy leaderboard data.
+fun LeaderboardScreen(userProfile: UserProfile?, onRestartClicked: () -> Unit) {
+    // Dummy leaderboard entries.
     val dummyEntries = listOf(
         LeaderboardEntry("Alice", 50),
         LeaderboardEntry("Bob", 30),
         LeaderboardEntry("Charlie", 20),
         LeaderboardEntry("Dave", 10)
     )
-
-    // Combine the dummy data with the current user's score.
-    val allEntries = dummyEntries + LeaderboardEntry("You", userScore)
-    // Sort in descending order by score.
+    // Combine dummy entries with the current user's profile.
+    val userEntry = userProfile?.let { LeaderboardEntry(it.name, it.score) }
+    val allEntries = if (userEntry != null) dummyEntries + userEntry else dummyEntries
     val sortedEntries = allEntries.sortedByDescending { it.score }
 
     Scaffold(
-        topBar = {
-            TopAppBar(title = { Text("Leaderboard") })
-        }
+        topBar = { TopAppBar(title = { Text("Leaderboard") }) }
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -272,18 +260,18 @@ fun LeaderboardScreen(
                 .padding(paddingValues)
                 .padding(16.dp)
         ) {
-            Text(text = "Leaderboard", style = MaterialTheme.typography.titleLarge)
+            Text("Leaderboard", style = MaterialTheme.typography.titleLarge)
             Spacer(modifier = Modifier.height(16.dp))
             sortedEntries.forEachIndexed { index, entry ->
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(text = "${index + 1}.", modifier = Modifier.width(30.dp))
+                    Text("${index + 1}.", modifier = Modifier.width(30.dp))
                     Text(
-                        text = entry.name,
+                        entry.name,
                         modifier = Modifier.weight(1f),
-                        color = if (entry.name == "You")
+                        color = if (userProfile != null && entry.name == userProfile.name)
                             MaterialTheme.colorScheme.primary
                         else LocalContentColor.current
                     )
