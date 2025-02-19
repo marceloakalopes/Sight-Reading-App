@@ -260,7 +260,7 @@ fun LeaderboardScreen(userProfile: UserProfile?, onRestartClicked: () -> Unit) {
                 .padding(paddingValues)
                 .padding(16.dp)
         ) {
-            Text("Leaderboard", style = MaterialTheme.typography.titleLarge)
+            Text("Top Scores", style = MaterialTheme.typography.titleLarge)
             Spacer(modifier = Modifier.height(16.dp))
             sortedEntries.forEachIndexed { index, entry ->
                 Row(
