@@ -16,7 +16,6 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.compose.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import java.lang.StackWalker.Option
 
 // --- Data Model for a Quiz Question ---
 data class Question(
@@ -46,7 +45,7 @@ enum class NoteResourcesAndAnswer(val answer: NoteOptions, val drawableResource:
     TREBLE_NOTE_D_LINE(NoteOptions.D, R.drawable.treble_note_d_line),
     TREBLE_NOTE_E_TOP_SPACE(NoteOptions.E, R.drawable.treble_note_e_top_space),
     TREBLE_NOTE_F_TOP_LINE(NoteOptions.F, R.drawable.treble_note_f_top_line),
-    TREBLE_NOTE_A_LEDGER(NoteOptions.A, R.drawable.treble_note_a_ledger);
+    TREBLE_NOTE_E_LEDGER(NoteOptions.A, R.drawable.treble_note_a_ledger);
 } // will never become more than 30 entries well i guess unless we added bass clef
 
 // --- Data Model for a Leaderboard Entry ---
