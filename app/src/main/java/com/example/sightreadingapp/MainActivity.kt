@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.compose.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.lang.StackWalker.Option
 
 // --- Data Model for a Quiz Question ---
 data class Question(
@@ -23,7 +24,30 @@ data class Question(
     val noteResource: Int,  // Drawable resource for the Treble Clef note.
     val options: List<String>,
     val correctAnswer: String
+
 )
+enum class NoteOptions(val note: String) {
+    A("A"),
+    B("B"),
+    C("C"),
+    D("D"),
+    E("E"),
+    F("F"),
+    G("G");
+}
+// chose an enum for both of these to enforce consistency
+enum class NoteResourcesAndAnswer(val answer: NoteOptions, val drawableResource: Int) {
+    TREBLE_NOTE_E_BOTTOM(NoteOptions.E, R.drawable.treble_note_e_bottom),
+    TREBLE_NOTE_F_SPACE(NoteOptions.F, R.drawable.treble_note_f_space),
+    TREBLE_NOTE_G_LINE(NoteOptions.G, R.drawable.treble_note_g_line),
+    TREBLE_NOTE_A_SPACE(NoteOptions.A, R.drawable.treble_note_a_space),
+    TREBLE_NOTE_B_LINE(NoteOptions.B, R.drawable.treble_note_b_line),
+    TREBLE_NOTE_C_SPACE(NoteOptions.C, R.drawable.treble_note_c_space),
+    TREBLE_NOTE_D_LINE(NoteOptions.D, R.drawable.treble_note_d_line),
+    TREBLE_NOTE_E_TOP_SPACE(NoteOptions.E, R.drawable.treble_note_e_top_space),
+    TREBLE_NOTE_F_TOP_LINE(NoteOptions.F, R.drawable.treble_note_f_top_line),
+    TREBLE_NOTE_A_LEDGER(NoteOptions.A, R.drawable.treble_note_a_ledger);
+} // will never become more than 30 entries well i guess unless we added bass clef
 
 // --- Data Model for a Leaderboard Entry ---
 data class LeaderboardEntry(val name: String, val score: Int)
@@ -37,6 +61,7 @@ class MainActivity : ComponentActivity() {
                 val context = LocalContext.current
 
                 // Retrieve the current profile from persistent storage.
+
                 val currentProfileId = ProfileRepository.getCurrentProfileId(context)
                 var userProfile by remember { mutableStateOf(ProfileRepository.getProfileById(context, currentProfileId)) }
 
@@ -98,86 +123,77 @@ fun WelcomeScreen(userName: String, onStartClicked: () -> Unit) {
     }
 }
 
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun QuizScreen(
     onQuizFinished: () -> Unit,
     updateScore: (Int) -> Unit
 ) {
-    // Define 10 quiz questions with Treble Clef note images.
-    val questions = listOf(
-        Question(
-            id = 1,
-            noteResource = R.drawable.treble_note_e_bottom,  // Bottom line (E)
-            options = listOf("E", "F", "G", "A"),
-            correctAnswer = "E"
-        ),
-        Question(
-            id = 2,
-            noteResource = R.drawable.treble_note_f_space,   // First space (F)
-            options = listOf("F", "G", "A", "B"),
-            correctAnswer = "F"
-        ),
-        Question(
-            id = 3,
-            noteResource = R.drawable.treble_note_g_line,    // Second line (G)
-            options = listOf("G", "A", "B", "C"),
-            correctAnswer = "G"
-        ),
-        Question(
-            id = 4,
-            noteResource = R.drawable.treble_note_a_space,   // Second space (A)
-            options = listOf("A", "B", "C", "D"),
-            correctAnswer = "A"
-        ),
-        Question(
-            id = 5,
-            noteResource = R.drawable.treble_note_b_line,    // Third line (B)
-            options = listOf("B", "C", "D", "E"),
-            correctAnswer = "B"
-        ),
-        Question(
-            id = 6,
-            noteResource = R.drawable.treble_note_c_space,   // Third space (C)
-            options = listOf("C", "D", "E", "F"),
-            correctAnswer = "C"
-        ),
-        Question(
-            id = 7,
-            noteResource = R.drawable.treble_note_d_line,    // Fourth line (D)
-            options = listOf("D", "E", "F", "G"),
-            correctAnswer = "D"
-        ),
-        Question(
-            id = 8,
-            noteResource = R.drawable.treble_note_e_top_space,  // Fourth space (E)
-            options = listOf("E", "F", "G", "A"),
-            correctAnswer = "E"
-        ),
-        Question(
-            id = 9,
-            noteResource = R.drawable.treble_note_f_top_line,  // Fifth line (F)
-            options = listOf("F", "G", "A", "B"),
-            correctAnswer = "F"
-        ),
-        Question(
-            id = 10,
-            noteResource = R.drawable.treble_note_a_ledger,    // Ledger note above the staff (A)
-            options = listOf("A", "B", "C", "D"),
-            correctAnswer = "A"
-        )
-    )
+    val availableQuestions = mutableListOf(*NoteResourcesAndAnswer.entries.toTypedArray()) // gets List of all ResourcesAndAnswers of this type
+    val possibleNotes = mutableListOf(*NoteOptions.entries.toTypedArray()) // gets a list of all NoteOptions
+    var incrementingId: Int = 1
 
+    // Generate random question function
+    fun generateRandomQuestion(): Question? {
+        if (availableQuestions.isEmpty()) {
+            return null
+        }
+
+        val randomQuestion = availableQuestions.random() // chooses random questions
+        availableQuestions.remove(randomQuestion) // removes a already used question from the Enumerator List
+        val correctNote = randomQuestion.answer.note // the note assigned to the drawable
+
+        // Choose 3 of the possible notes that are not the correct answer
+        val shuffledNotes = possibleNotes.filter { it.note != correctNote }.take(3)
+
+        // Add the correct answer to the list
+        val allOptions = listOf(correctNote) + shuffledNotes.map { it.note }
+
+        incrementingId++
+
+        return Question(
+            id = incrementingId,
+            noteResource = randomQuestion.drawableResource,
+            options = allOptions.shuffled(),
+            correctAnswer = correctNote
+        )
+    }
+
+    // State to manage current question and quiz state
     var currentQuestionIndex by remember { mutableStateOf(0) }
     var hasAttempted by remember { mutableStateOf(false) }
     var resultMessage by remember { mutableStateOf("") }
     val coroutineScope = rememberCoroutineScope()
 
-    if (currentQuestionIndex >= questions.size) {
-        LaunchedEffect(Unit) { onQuizFinished() }
+    // Create a list of questions dynamically
+    val questions = remember { mutableStateListOf<Question>() }
+
+    // Flag to indicate whether the questions are ready
+    var isQuestionsReady by remember { mutableStateOf(false) }
+
+    // Generate the questions when the screen first loads
+    LaunchedEffect(Unit) {
+        repeat(10) {
+            generateRandomQuestion()?.let { question ->
+                questions.add(question)
+            }
+        }
+        isQuestionsReady = true // sets the boolean to true when the questions are ready
+    }
+
+    if (!isQuestionsReady) {
+        return // Returns early if questions aren't ready yet
+    }
+
+    // gets the current question
+    val currentQuestion = questions.getOrNull(currentQuestionIndex)
+
+    // ends the quiz when everything is answered
+    if (currentQuestion == null) {
+        onQuizFinished()
         return
     }
-    val currentQuestion = questions[currentQuestionIndex]
 
     Scaffold(
         topBar = { TopAppBar(title = { Text("Quiz") }) }
@@ -190,12 +206,15 @@ fun QuizScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
+            // Display the current question's note
             Image(
                 painter = painterResource(id = currentQuestion.noteResource),
                 contentDescription = "Treble Clef Note",
                 modifier = Modifier.size(250.dp)
             )
             Spacer(modifier = Modifier.height(24.dp))
+
+            // Display answer options
             currentQuestion.options.forEach { option ->
                 Button(
                     onClick = {
@@ -235,6 +254,9 @@ fun QuizScreen(
         }
     }
 }
+
+
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
