@@ -67,9 +67,27 @@ class MainActivity : ComponentActivity() {
                 // Navigation graph: Welcome, Quiz, and Leaderboard screens.
                 NavHost(navController = navController, startDestination = "welcome") {
                     composable("welcome") {
-                        WelcomeScreen(userProfile?.name ?: "User", onStartClicked = {
-                            navController.navigate("quiz")
-                        })
+                        WelcomeScreen(userProfile?.name ?: "User",
+                            onStartClicked = { navController.navigate("quiz") },
+                            onNoteQuizClicked = { navController.navigate("noteBuilder") })
+                    }
+                    composable("noteBuilder"){
+                        // just copied other probably could just make
+                        // updateScore a function for quiz controllers
+                        noteBuilder(
+                            onQuizFinished = {
+                                // Refresh the profile after the quiz.
+                                userProfile = ProfileRepository.getProfileById(context, currentProfileId)
+                                navController.navigate("leaderboard")
+                            },
+                            updateScore = { points ->
+                                // Update the profile's score both in memory and in persistent storage.
+                                val updatedScore = (userProfile?.score ?: 0) + points
+                                userProfile = userProfile?.copy(score = updatedScore)
+                                userProfile?.let { ProfileRepository.updateProfileScore(context, it.id, updatedScore) }
+                            }
+                        )
+
                     }
                     composable("quiz") {
                         QuizScreen(
@@ -103,7 +121,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun WelcomeScreen(userName: String, onStartClicked: () -> Unit) {
+fun WelcomeScreen(userName: String, onStartClicked: () -> Unit, onNoteQuizClicked: () -> Unit) {
     Scaffold { paddingValues ->
         Column(
             modifier = Modifier
@@ -116,10 +134,22 @@ fun WelcomeScreen(userName: String, onStartClicked: () -> Unit) {
             Text("Welcome back, $userName", fontSize = 24.sp)
             Spacer(modifier = Modifier.height(16.dp))
             Button(onClick = onStartClicked) {
-                Text("Start")
+                Text("quiz")
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+            Button(onClick = onNoteQuizClicked){
+                Text("Note Quiz")
             }
         }
     }
+}
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun noteBuilder(
+    onQuizFinished: () -> Unit,
+    updateScore: (Int) -> Unit
+){
+
 }
 
 
@@ -160,7 +190,7 @@ fun QuizScreen(
     }
 
     // State to manage current question and quiz state
-    var currentQuestionIndex by remember { mutableStateOf(0) }
+    var currentQuestionIndex by remember { mutableIntStateOf(0) }
     var hasAttempted by remember { mutableStateOf(false) }
     var resultMessage by remember { mutableStateOf("") }
     val coroutineScope = rememberCoroutineScope()
