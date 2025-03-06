@@ -34,19 +34,53 @@ enum class NoteOptions(val note: String) {
     F("F"),
     G("G");
 }
+enum class Accidentals(val accident: String){
+    NONE(""),
+    FLAT("♭"),
+    SHARP("♯")
+}
 // chose an enum for both of these to enforce consistency
-enum class NoteResourcesAndAnswer(val answer: NoteOptions, val drawableResource: Int) {
-    TREBLE_NOTE_E_BOTTOM(NoteOptions.E, R.drawable.treble_note_e_bottom),
-    TREBLE_NOTE_F_SPACE(NoteOptions.F, R.drawable.treble_note_f_space),
-    TREBLE_NOTE_G_LINE(NoteOptions.G, R.drawable.treble_note_g_line),
-    TREBLE_NOTE_A_SPACE(NoteOptions.A, R.drawable.treble_note_a_space),
-    TREBLE_NOTE_B_LINE(NoteOptions.B, R.drawable.treble_note_b_line),
-    TREBLE_NOTE_C_SPACE(NoteOptions.C, R.drawable.treble_note_c_space),
-    TREBLE_NOTE_D_LINE(NoteOptions.D, R.drawable.treble_note_d_line),
-    TREBLE_NOTE_E_TOP_SPACE(NoteOptions.E, R.drawable.treble_note_e_top_space),
-    TREBLE_NOTE_F_TOP_LINE(NoteOptions.F, R.drawable.treble_note_f_top_line),
-    TREBLE_NOTE_E_LEDGER(NoteOptions.A, R.drawable.treble_note_a_ledger);
-} // will never become more than 30 entries well i guess unless we added bass clef
+enum class NoteResourcesAndAnswer(val correctNote: NoteOptions, val correctAccidental: Accidentals, val drawableResource: Int) {
+    TREBLE_NOTE_A_LEDGER(NoteOptions.A, Accidentals.NONE, R.drawable.treble_note_a_ledger),
+    TREBLE_NOTE_A_SPACE(NoteOptions.A, Accidentals.NONE, R.drawable.treble_note_a_space),
+    TREBLE_NOTE_B_LINE(NoteOptions.B, Accidentals.NONE, R.drawable.treble_note_b_line),
+    TREBLE_NOTE_C_SPACE(NoteOptions.C, Accidentals.NONE, R.drawable.treble_note_c_space),
+    TREBLE_NOTE_D_BELOW(NoteOptions.D, Accidentals.NONE, R.drawable.treble_note_d_below),
+    TREBLE_NOTE_D_LINE(NoteOptions.D, Accidentals.NONE, R.drawable.treble_note_d_line),
+    TREBLE_NOTE_E_BOTTOM(NoteOptions.E, Accidentals.NONE, R.drawable.treble_note_e_bottom),
+    TREBLE_NOTE_E_TOP_SPACE(NoteOptions.E, Accidentals.NONE, R.drawable.treble_note_e_top_space),
+    TREBLE_NOTE_F_SPACE(NoteOptions.F, Accidentals.NONE, R.drawable.treble_note_f_space),
+    TREBLE_NOTE_F_TOP_LINE(NoteOptions.F, Accidentals.NONE, R.drawable.treble_note_f_top_line),
+    TREBLE_NOTE_G_ABOVE(NoteOptions.G, Accidentals.NONE, R.drawable.treble_note_g_above),
+    TREBLE_NOTE_G_LINE(NoteOptions.G, Accidentals.NONE, R.drawable.treble_note_g_line),
+
+    TREBLE_NOTE_A_LEDGER_FLAT(NoteOptions.A, Accidentals.FLAT, R.drawable.treble_note_a_ledger_flat),
+    TREBLE_NOTE_A_SPACE_FLAT(NoteOptions.A, Accidentals.FLAT, R.drawable.treble_note_a_space_flat),
+    TREBLE_NOTE_B_LINE_FLAT(NoteOptions.B, Accidentals.FLAT, R.drawable.treble_note_b_line_flat),
+    TREBLE_NOTE_C_SPACE_FLAT(NoteOptions.C, Accidentals.FLAT, R.drawable.treble_note_c_space_flat),
+    TREBLE_NOTE_D_BELOW_FLAT(NoteOptions.D, Accidentals.FLAT, R.drawable.treble_note_d_below_flat),
+    TREBLE_NOTE_D_LINE_FLAT(NoteOptions.D, Accidentals.FLAT, R.drawable.treble_note_d_line_flat),
+    TREBLE_NOTE_E_BOTTOM_FLAT(NoteOptions.E, Accidentals.FLAT, R.drawable.treble_note_e_bottom_flat),
+    TREBLE_NOTE_E_TOP_SPACE_FLAT(NoteOptions.E, Accidentals.FLAT, R.drawable.treble_note_e_top_space_flat),
+    TREBLE_NOTE_F_SPACE_FLAT(NoteOptions.F, Accidentals.FLAT, R.drawable.treble_note_f_space_flat),
+    TREBLE_NOTE_F_TOP_LINE_FLAT(NoteOptions.F, Accidentals.FLAT, R.drawable.treble_note_f_top_line_flat),
+    TREBLE_NOTE_G_ABOVE_FLAT(NoteOptions.G, Accidentals.FLAT, R.drawable.treble_note_g_above_flat),
+    TREBLE_NOTE_G_LINE_FLAT(NoteOptions.G, Accidentals.FLAT, R.drawable.treble_note_g_line_flat),
+
+    TREBLE_NOTE_A_LEDGER_SHARP(NoteOptions.A, Accidentals.SHARP, R.drawable.treble_note_a_ledger_sharp),
+    TREBLE_NOTE_A_SPACE_SHARP(NoteOptions.A, Accidentals.SHARP, R.drawable.treble_note_a_space_sharp),
+    TREBLE_NOTE_B_LINE_SHARP(NoteOptions.B, Accidentals.SHARP, R.drawable.treble_note_b_line_sharp),
+    TREBLE_NOTE_C_SPACE_SHARP(NoteOptions.C, Accidentals.SHARP, R.drawable.treble_note_c_space_sharp),
+    TREBLE_NOTE_D_BELOW_SHARP(NoteOptions.D, Accidentals.SHARP, R.drawable.treble_note_d_below_sharp),
+    TREBLE_NOTE_D_LINE_SHARP(NoteOptions.D, Accidentals.SHARP, R.drawable.treble_note_d_line_sharp),
+    TREBLE_NOTE_E_BOTTOM_SHARP(NoteOptions.E, Accidentals.SHARP, R.drawable.treble_note_e_bottom_sharp),
+    TREBLE_NOTE_E_TOP_SPACE_SHARP(NoteOptions.E, Accidentals.SHARP, R.drawable.treble_note_e_top_space_sharp),
+    TREBLE_NOTE_F_SPACE_SHARP(NoteOptions.F, Accidentals.SHARP, R.drawable.treble_note_f_space_sharp),
+    TREBLE_NOTE_F_TOP_LINE_SHARP(NoteOptions.F, Accidentals.SHARP, R.drawable.treble_note_f_top_line_sharp),
+    TREBLE_NOTE_G_ABOVE_SHARP(NoteOptions.G, Accidentals.SHARP, R.drawable.treble_note_g_above_sharp),
+    TREBLE_NOTE_G_LINE_SHARP(NoteOptions.G, Accidentals.SHARP, R.drawable.treble_note_g_line_sharp),
+} // added accidentals to the scheme and now its 12 per type as we went lower
+
 
 // --- Data Model for a Leaderboard Entry ---
 data class LeaderboardEntry(val name: String, val score: Int)
@@ -148,10 +182,9 @@ fun WelcomeScreen(userName: String, onStartClicked: () -> Unit, onNoteQuizClicke
 fun noteBuilder(
     onQuizFinished: () -> Unit,
     updateScore: (Int) -> Unit
-){
-
-}
-
+){}
+// TODO make randomized quizzes
+// kinda useful funky green eye attractor
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -160,7 +193,8 @@ fun QuizScreen(
     updateScore: (Int) -> Unit
 ) {
     val availableQuestions = mutableListOf(*NoteResourcesAndAnswer.entries.toTypedArray()) // gets List of all ResourcesAndAnswers of this type
-    val possibleNotes = mutableListOf(*NoteOptions.entries.toTypedArray()) // gets a list of all NoteOptions
+    val possibleNotes = listOf(*NoteOptions.entries.toTypedArray()) // gets a list of all NoteOptions
+    val possibleAccidents = listOf(*Accidentals.entries.toTypedArray()) // gets all types of accidentals
     var incrementingId: Int = 1
 
     // Generate random question function
@@ -169,25 +203,51 @@ fun QuizScreen(
             return null
         }
 
-        val randomQuestion = availableQuestions.random() // chooses random questions
-        availableQuestions.remove(randomQuestion) // removes a already used question from the Enumerator List
-        val correctNote = randomQuestion.answer.note // the note assigned to the drawable
+        val randomQuestion = availableQuestions.random() // Choose a random question
 
-        // Choose 3 of the possible notes that are not the correct answer
+        availableQuestions.remove(randomQuestion) // Remove it from the available questions list
+
+        // Extract the note and accidental from the random question
+        val correctNote = randomQuestion.correctNote.note
+        val correctAccidental = randomQuestion.correctAccidental.accident
+
+        // Choose 3 possible notes that are not the correct answer (by note and accidental)
         val shuffledNotes = possibleNotes.filter { it.note != correctNote }.take(3)
+        val shuffledAccidentals = possibleAccidents.filter { it.accident != correctAccidental }.take(3)
 
-        // Add the correct answer to the list
-        val allOptions = listOf(correctNote) + shuffledNotes.map { it.note }
+        // Create a list of options by pairing each note with each accidental, keeping it to just 4 combinations (including the correct one)
+        val options = mutableListOf<Pair<String, String>>()
+
+        // Add the correct note/accidental to the options list
+        options.add(correctNote to correctAccidental)
+
+        // Shuffle notes and accidentals separately, and pair them randomly, ensuring we only add 3 incorrect options
+        val incorrectOptions = mutableListOf<Pair<String, String>>()
+        for (note in shuffledNotes) {
+            for (accidental in shuffledAccidentals) {
+                incorrectOptions.add(note.note to accidental.accident)
+            }
+        }
+
+        // Randomly shuffle and take the first 3 incorrect options
+        incorrectOptions.shuffle()
+        options.addAll(incorrectOptions.take(3))
+
+        // Shuffle all the options to randomize their order
+        options.shuffle()
 
         incrementingId++
 
+        // Return the question with the randomized options
         return Question(
             id = incrementingId,
             noteResource = randomQuestion.drawableResource,
-            options = allOptions.shuffled(),
-            correctAnswer = correctNote
+            options = options.map { "${it.first}${it.second}" }, // Combine note and accidental for options
+            correctAnswer = "$correctNote$correctAccidental" // Combine note and accidental for the correct answer
         )
     }
+
+
 
     // State to manage current question and quiz state
     var currentQuestionIndex by remember { mutableIntStateOf(0) }
