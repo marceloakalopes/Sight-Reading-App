@@ -213,7 +213,7 @@ fun QuizScreen(
 
         // Choose 3 possible notes that are not the correct answer (by note and accidental)
         val shuffledNotes = possibleNotes.filter { it.note != correctNote }.take(3)
-        val shuffledAccidentals = possibleAccidents.filter { it.accident != correctAccidental }.take(3)
+
 
         // Create a list of options by pairing each note with each accidental, keeping it to just 4 combinations (including the correct one)
         val options = mutableListOf<Pair<String, String>>()
@@ -221,10 +221,10 @@ fun QuizScreen(
         // Add the correct note/accidental to the options list
         options.add(correctNote to correctAccidental)
 
-        // Shuffle notes and accidentals separately, and pair them randomly, ensuring we only add 3 incorrect options
+
         val incorrectOptions = mutableListOf<Pair<String, String>>()
         for (note in shuffledNotes) {
-            for (accidental in shuffledAccidentals) {
+            for (accidental in possibleAccidents) {
                 incorrectOptions.add(note.note to accidental.accident)
             }
         }
