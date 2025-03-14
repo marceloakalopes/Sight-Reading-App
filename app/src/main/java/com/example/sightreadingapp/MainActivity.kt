@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -192,35 +193,25 @@ fun QuizScreen(
     onQuizFinished: () -> Unit,
     updateScore: (Int) -> Unit
 ) {
-    val availableQuestions = mutableListOf(*NoteResourcesAndAnswer.entries.toTypedArray()) // gets List of all ResourcesAndAnswers of this type
-    val possibleNotes = listOf(*NoteOptions.entries.toTypedArray()) // gets a list of all NoteOptions
-    val possibleAccidents = listOf(*Accidentals.entries.toTypedArray()) // gets all types of accidentals
+    val availableQuestions = mutableListOf(*NoteResourcesAndAnswer.entries.toTypedArray())
+    val possibleNotes = listOf(*NoteOptions.entries.toTypedArray())
+    val possibleAccidents = listOf(*Accidentals.entries.toTypedArray())
     var incrementingId: Int = 1
 
     // Generate random question function
     fun generateRandomQuestion(): Question? {
-        if (availableQuestions.isEmpty()) {
-            return null
-        }
+        if (availableQuestions.isEmpty()) return null
 
-        val randomQuestion = availableQuestions.random() // Choose a random question
+        val randomQuestion = availableQuestions.random()
+        availableQuestions.remove(randomQuestion)
 
-        availableQuestions.remove(randomQuestion) // Remove it from the available questions list
-
-        // Extract the note and accidental from the random question
         val correctNote = randomQuestion.correctNote.note
         val correctAccidental = randomQuestion.correctAccidental.accident
 
-        // Choose 3 possible notes that are not the correct answer (by note and accidental)
         val shuffledNotes = possibleNotes.filter { it.note != correctNote }.take(3)
-
-
-        // Create a list of options by pairing each note with each accidental, keeping it to just 4 combinations (including the correct one)
-        val options = mutableListOf<Pair<String, String>>()
-
-        // Add the correct note/accidental to the options list
-        options.add(correctNote to correctAccidental)
-
+        val options = mutableListOf<Pair<String, String>>().apply {
+            add(correctNote to correctAccidental)
+        }
 
         val incorrectOptions = mutableListOf<Pair<String, String>>()
         for (note in shuffledNotes) {
@@ -228,37 +219,28 @@ fun QuizScreen(
                 incorrectOptions.add(note.note to accidental.accident)
             }
         }
-
-        // Randomly shuffle and take the first 3 incorrect options
         incorrectOptions.shuffle()
         options.addAll(incorrectOptions.take(3))
-
-        // Shuffle all the options to randomize their order
         options.shuffle()
 
         incrementingId++
-
-        // Return the question with the randomized options
         return Question(
             id = incrementingId,
             noteResource = randomQuestion.drawableResource,
-            options = options.map { "${it.first}${it.second}" }, // Combine note and accidental for options
-            correctAnswer = "$correctNote$correctAccidental" // Combine note and accidental for the correct answer
+            options = options.map { "${it.first}${it.second}" },
+            correctAnswer = "$correctNote$correctAccidental"
         )
     }
 
-
-
-    // State to manage current question and quiz state
+    // State variables for quiz and feedback animation
     var currentQuestionIndex by remember { mutableIntStateOf(0) }
     var hasAttempted by remember { mutableStateOf(false) }
     var resultMessage by remember { mutableStateOf("") }
+    var feedbackAnimationRes by remember { mutableStateOf<Int?>(null) }
     val coroutineScope = rememberCoroutineScope()
 
     // Create a list of questions dynamically
     val questions = remember { mutableStateListOf<Question>() }
-
-    // Flag to indicate whether the questions are ready
     var isQuestionsReady by remember { mutableStateOf(false) }
 
     // Generate the questions when the screen first loads
@@ -268,81 +250,105 @@ fun QuizScreen(
                 questions.add(question)
             }
         }
-        isQuestionsReady = true // sets the boolean to true when the questions are ready
+        isQuestionsReady = true
     }
 
     if (!isQuestionsReady) {
-        return // Returns early if questions aren't ready yet
+        return // Wait until questions are ready
     }
 
-    // gets the current question
+    // Get the current question; if none remain, finish the quiz.
     val currentQuestion = questions.getOrNull(currentQuestionIndex)
-
-    // ends the quiz when everything is answered
     if (currentQuestion == null) {
+        // Clear any active animation before finishing
+        feedbackAnimationRes = null
         onQuizFinished()
         return
     }
 
+    // Use a Scaffold and wrap content in a Box to layer the quiz UI and the animation overlay
     Scaffold(
         topBar = { TopAppBar(title = { Text("Quiz") }) }
     ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            // Display the current question's note
-            Image(
-                painter = painterResource(id = currentQuestion.noteResource),
-                contentDescription = "Treble Clef Note",
-                modifier = Modifier.size(250.dp)
-            )
-            Spacer(modifier = Modifier.height(24.dp))
+        Box(modifier = Modifier.fillMaxSize()) {
+            if (feedbackAnimationRes == null) {
+                // Quiz UI is visible when there's no active animation
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues)
+                        .padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    // Display the current question's note
+                    Image(
+                        painter = painterResource(id = currentQuestion.noteResource),
+                        contentDescription = "Treble Clef Note",
+                        modifier = Modifier.size(250.dp)
+                    )
+                    Spacer(modifier = Modifier.height(24.dp))
+                    val context = LocalContext.current
+                    // Display answer options
+                    currentQuestion.options.forEach { option ->
+                        Button(
+                            onClick = {
+                                if (!hasAttempted) {
+                                    hasAttempted = true
+                                    if (option == currentQuestion.correctAnswer) {
+                                        resultMessage = "Correct!"
+                                        updateScore(10)
+                                        playSound(context, R.raw.right_answer)
 
-            // Display answer options
-            currentQuestion.options.forEach { option ->
-                Button(
-                    onClick = {
-                        if (!hasAttempted) {
-                            hasAttempted = true
-                            if (option == currentQuestion.correctAnswer) {
-                                resultMessage = "Correct!"
-                                updateScore(10)
-                                coroutineScope.launch {
-                                    delay(1000L)
-                                    currentQuestionIndex++
-                                    hasAttempted = false
-                                    resultMessage = ""
+                                        feedbackAnimationRes = R.raw.smile_correct
+                                    } else {
+                                        resultMessage = "Wrong! Correct answer: ${currentQuestion.correctAnswer}"
+                                        playSound(context, R.raw.incorrect_answer)
+
+                                        feedbackAnimationRes = R.raw.smile_incorrect
+                                    }
                                 }
-                            } else {
-                                resultMessage = "Wrong! Correct answer: ${currentQuestion.correctAnswer}"
-                                coroutineScope.launch {
-                                    delay(2000L)
-                                    currentQuestionIndex++
-                                    hasAttempted = false
-                                    resultMessage = ""
-                                }
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp)
+                        ) {
+                            Text(option)
+                        }
+                    }
+                    if (resultMessage.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(resultMessage)
+                    }
+                }
+            } else {
+                // Full-screen animation overlay hides the quiz UI
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.background),
+                    contentAlignment = Alignment.Center
+                ) {
+                    AnswerFeedbackAnimation(
+                        animationRes = feedbackAnimationRes!!,
+                        durationMillis = if (resultMessage.contains("Correct")) 2000L else 3000L,
+                        onAnimationEnd = {
+
+                            feedbackAnimationRes = null
+                            coroutineScope.launch {
+                                delay(150L)
+                                currentQuestionIndex++
+                                hasAttempted = false
+                                resultMessage = ""
                             }
                         }
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 4.dp)
-                ) {
-                    Text(option)
+                    )
                 }
-            }
-            if (resultMessage.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(resultMessage)
             }
         }
     }
 }
+
 
 
 
