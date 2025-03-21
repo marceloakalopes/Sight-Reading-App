@@ -156,10 +156,12 @@ fun NoteBuilder(
                     }
                 }
             }
-                Row {
+                LazyRow {
                     possibleNotes.forEach { note ->
-                        Button( onClick = { userNote = note }) {
-                            Text(note.toString())
+                        item{
+                            Button( onClick = { userNote = note }) {
+                                Text(note.toString())
+                            }
                         }
                     }
                 }
