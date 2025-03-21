@@ -14,7 +14,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.navigation.compose.*
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -24,8 +26,8 @@ data class Question(
     val noteResource: Int,  // Drawable resource for the Treble Clef note.
     val options: List<String>,
     val correctAnswer: String
-
 )
+
 enum class NoteOptions(val note: String) {
     A("A"),
     B("B"),
@@ -35,11 +37,13 @@ enum class NoteOptions(val note: String) {
     F("F"),
     G("G");
 }
+
 enum class Accidentals(val accident: String){
     NONE(""),
     FLAT("♭"),
     SHARP("♯")
 }
+
 // chose an enum for both of these to enforce consistency
 enum class NoteResourcesAndAnswer(val correctNote: NoteOptions, val correctAccidental: Accidentals, val drawableResource: Int) {
     TREBLE_NOTE_A_LEDGER(NoteOptions.A, Accidentals.NONE, R.drawable.treble_note_a_ledger),
@@ -80,8 +84,7 @@ enum class NoteResourcesAndAnswer(val correctNote: NoteOptions, val correctAccid
     TREBLE_NOTE_F_TOP_LINE_SHARP(NoteOptions.F, Accidentals.SHARP, R.drawable.treble_note_f_top_line_sharp),
     TREBLE_NOTE_G_ABOVE_SHARP(NoteOptions.G, Accidentals.SHARP, R.drawable.treble_note_g_above_sharp),
     TREBLE_NOTE_G_LINE_SHARP(NoteOptions.G, Accidentals.SHARP, R.drawable.treble_note_g_line_sharp),
-} // added accidentals to the scheme and now its 12 per type as we went lower
-
+}
 
 // --- Data Model for a Leaderboard Entry ---
 data class LeaderboardEntry(val name: String, val score: Int)
@@ -95,20 +98,21 @@ class MainActivity : ComponentActivity() {
                 val context = LocalContext.current
 
                 // Retrieve the current profile from persistent storage.
-
                 val currentProfileId = ProfileRepository.getCurrentProfileId(context)
-                var userProfile by remember { mutableStateOf(ProfileRepository.getProfileById(context, currentProfileId)) }
+                var userProfile by remember {
+                    mutableStateOf(ProfileRepository.getProfileById(context, currentProfileId))
+                }
 
                 // Navigation graph: Welcome, Quiz, and Leaderboard screens.
                 NavHost(navController = navController, startDestination = "welcome") {
                     composable("welcome") {
-                        WelcomeScreen(userProfile?.name ?: "User",
+                        WelcomeScreen(
+                            userProfile?.name ?: "User",
                             onStartClicked = { navController.navigate("quiz") },
-                            onNoteQuizClicked = { navController.navigate("noteBuilder") })
+                            onNoteQuizClicked = { navController.navigate("noteBuilder") }
+                        )
                     }
-                    composable("noteBuilder"){
-                        // just copied other probably could just make
-                        // updateScore a function for quiz controllers
+                    composable("noteBuilder") {
                         noteBuilder(
                             onQuizFinished = {
                                 // Refresh the profile after the quiz.
@@ -116,13 +120,11 @@ class MainActivity : ComponentActivity() {
                                 navController.navigate("leaderboard")
                             },
                             updateScore = { points ->
-                                // Update the profile's score both in memory and in persistent storage.
                                 val updatedScore = (userProfile?.score ?: 0) + points
                                 userProfile = userProfile?.copy(score = updatedScore)
                                 userProfile?.let { ProfileRepository.updateProfileScore(context, it.id, updatedScore) }
                             }
                         )
-
                     }
                     composable("quiz") {
                         QuizScreen(
@@ -132,7 +134,6 @@ class MainActivity : ComponentActivity() {
                                 navController.navigate("leaderboard")
                             },
                             updateScore = { points ->
-                                // Update the profile's score both in memory and in persistent storage.
                                 val updatedScore = (userProfile?.score ?: 0) + points
                                 userProfile = userProfile?.copy(score = updatedScore)
                                 userProfile?.let { ProfileRepository.updateProfileScore(context, it.id, updatedScore) }
@@ -156,7 +157,11 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun WelcomeScreen(userName: String, onStartClicked: () -> Unit, onNoteQuizClicked: () -> Unit) {
+fun WelcomeScreen(
+    userName: String,
+    onStartClicked: () -> Unit,
+    onNoteQuizClicked: () -> Unit
+) {
     Scaffold { paddingValues ->
         Column(
             modifier = Modifier
@@ -172,33 +177,39 @@ fun WelcomeScreen(userName: String, onStartClicked: () -> Unit, onNoteQuizClicke
                 Text("quiz")
             }
             Spacer(modifier = Modifier.height(16.dp))
-            Button(onClick = onNoteQuizClicked){
+            Button(onClick = onNoteQuizClicked) {
                 Text("Note Quiz")
             }
         }
     }
 }
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun noteBuilder(
     onQuizFinished: () -> Unit,
     updateScore: (Int) -> Unit
-){}
-// TODO make randomized quizzes
-// kinda useful funky green eye attractor
+) {
+    // TODO: Build out your noteBuilder content
+}
 
+// -----------------------------------
+// Quiz Screen with Progress Bar
+// -----------------------------------
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun QuizScreen(
     onQuizFinished: () -> Unit,
     updateScore: (Int) -> Unit
 ) {
+    // 1. Define how many questions to generate
+    val totalQuestions = 10
+
     val availableQuestions = mutableListOf(*NoteResourcesAndAnswer.entries.toTypedArray())
     val possibleNotes = listOf(*NoteOptions.entries.toTypedArray())
     val possibleAccidents = listOf(*Accidentals.entries.toTypedArray())
     var incrementingId: Int = 1
 
-    // Generate random question function
     fun generateRandomQuestion(): Question? {
         if (availableQuestions.isEmpty()) return null
 
@@ -232,23 +243,20 @@ fun QuizScreen(
         )
     }
 
-    // State variables for quiz and feedback animation
+    // 2. Track current question, user attempts, etc.
     var currentQuestionIndex by remember { mutableIntStateOf(0) }
     var hasAttempted by remember { mutableStateOf(false) }
     var resultMessage by remember { mutableStateOf("") }
     var feedbackAnimationRes by remember { mutableStateOf<Int?>(null) }
     val coroutineScope = rememberCoroutineScope()
 
-    // Create a list of questions dynamically
     val questions = remember { mutableStateListOf<Question>() }
     var isQuestionsReady by remember { mutableStateOf(false) }
 
-    // Generate the questions when the screen first loads
+    // 3. Generate questions on first load
     LaunchedEffect(Unit) {
-        repeat(10) {
-            generateRandomQuestion()?.let { question ->
-                questions.add(question)
-            }
+        repeat(totalQuestions) {
+            generateRandomQuestion()?.let { question -> questions.add(question) }
         }
         isQuestionsReady = true
     }
@@ -257,22 +265,34 @@ fun QuizScreen(
         return // Wait until questions are ready
     }
 
-    // Get the current question; if none remain, finish the quiz.
     val currentQuestion = questions.getOrNull(currentQuestionIndex)
     if (currentQuestion == null) {
-        // Clear any active animation before finishing
+        // No more questions, finish quiz
         feedbackAnimationRes = null
         onQuizFinished()
         return
     }
 
-    // Use a Scaffold and wrap content in a Box to layer the quiz UI and the animation overlay
+    // 4. Show a top bar with a progress bar
     Scaffold(
-        topBar = { TopAppBar(title = { Text("Quiz") }) }
+        topBar = {
+            TopAppBar(
+                title = {
+                    Column {
+                        Text("Quiz")
+                        // Duolingo-like progress bar showing “Question X of Y”
+                        QuizProgressBar(
+                            currentQuestionIndex = currentQuestionIndex,
+                            totalQuestions = totalQuestions
+                        )
+                    }
+                }
+            )
+        }
     ) { paddingValues ->
         Box(modifier = Modifier.fillMaxSize()) {
+            // If we do NOT have an active animation, show the quiz UI
             if (feedbackAnimationRes == null) {
-                // Quiz UI is visible when there's no active animation
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -281,15 +301,17 @@ fun QuizScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
-                    // Display the current question's note
+                    // Display the question’s note
                     Image(
                         painter = painterResource(id = currentQuestion.noteResource),
                         contentDescription = "Treble Clef Note",
                         modifier = Modifier.size(250.dp)
                     )
                     Spacer(modifier = Modifier.height(24.dp))
+
                     val context = LocalContext.current
-                    // Display answer options
+
+                    // Answer options
                     currentQuestion.options.forEach { option ->
                         Button(
                             onClick = {
@@ -299,12 +321,10 @@ fun QuizScreen(
                                         resultMessage = "Correct!"
                                         updateScore(10)
                                         playSound(context, R.raw.right_answer)
-
                                         feedbackAnimationRes = R.raw.smile_correct
                                     } else {
                                         resultMessage = "Wrong! Correct answer: ${currentQuestion.correctAnswer}"
                                         playSound(context, R.raw.incorrect_answer)
-
                                         feedbackAnimationRes = R.raw.smile_incorrect
                                     }
                                 }
@@ -316,42 +336,78 @@ fun QuizScreen(
                             Text(option)
                         }
                     }
-                    if (resultMessage.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(resultMessage)
-                    }
                 }
             } else {
-                // Full-screen animation overlay hides the quiz UI
+                // If we DO have an active animation, show the full-screen overlay
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .background(MaterialTheme.colorScheme.background),
                     contentAlignment = Alignment.Center
                 ) {
-                    AnswerFeedbackAnimation(
-                        animationRes = feedbackAnimationRes!!,
-                        durationMillis = if (resultMessage.contains("Correct")) 2000L else 3000L,
-                        onAnimationEnd = {
-
-                            feedbackAnimationRes = null
-                            coroutineScope.launch {
-                                delay(150L)
-                                currentQuestionIndex++
-                                hasAttempted = false
-                                resultMessage = ""
-                            }
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        // Set a fixed size for the animation
+                        AnswerFeedbackAnimation(
+                            animationRes = feedbackAnimationRes!!,
+                            durationMillis = if (resultMessage.contains("Correct")) 2000L else 3000L,
+                            onAnimationEnd = {
+                                feedbackAnimationRes = null
+                                coroutineScope.launch {
+                                    delay(150L)
+                                    currentQuestionIndex++
+                                    hasAttempted = false
+                                    resultMessage = ""
+                                }
+                            },
+                            modifier = Modifier.size(250.dp)  // Use a fixed size instead of fillMaxSize()
+                        )
+                        // Display the result text below the animation
+                        if (resultMessage.isNotEmpty()) {
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                text = resultMessage,
+                                style = MaterialTheme.typography.titleLarge
+                            )
                         }
-                    )
+                    }
                 }
             }
         }
     }
 }
 
+// -----------------------------------
+// Simple Duolingo-like Progress Bar
+// -----------------------------------
+@Composable
+fun QuizProgressBar(
+    currentQuestionIndex: Int,
+    totalQuestions: Int
+) {
+    // Convert current question index to 1-based for user display
+    val currentNumber = currentQuestionIndex + 1
 
+    // Calculate progress as a fraction from 0.0 to 1.0
+    val progress = currentNumber.coerceAtMost(totalQuestions).toFloat() / totalQuestions
 
-
+    Column(modifier = Modifier.fillMaxWidth()) {
+        // Optional: “Question X of Y”
+        Text(
+            text = "Question $currentNumber of $totalQuestions",
+            style = MaterialTheme.typography.bodyMedium
+        )
+        // Linear progress bar
+        LinearProgressIndicator(
+            progress = progress,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 8.dp)
+        )
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

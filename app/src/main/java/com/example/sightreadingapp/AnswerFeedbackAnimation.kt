@@ -21,31 +21,28 @@ import kotlinx.coroutines.delay
 fun AnswerFeedbackAnimation(
     @RawRes animationRes: Int,
     durationMillis: Long = 2000,
-    onAnimationEnd: () -> Unit
+    onAnimationEnd: () -> Unit,
+    modifier: Modifier = Modifier // New modifier parameter
 ) {
-    // Load the Lottie animation composition from the given raw resource.
     val composition by rememberLottieComposition(LottieCompositionSpec.RawRes(animationRes))
-
-    // Create an animation state that plays the Lottie animation once.
     val animationState = animateLottieCompositionAsState(
         composition = composition,
-        iterations = 1 // Play once
+        iterations = 1
     )
 
-    // Effect to handle animation end logic after the specified duration.
     LaunchedEffect(key1 = animationRes) {
-        delay(durationMillis) // Wait for the animation to finish.
-        onAnimationEnd() // Trigger the callback function.
+        delay(durationMillis)
+        onAnimationEnd()
     }
 
-    // Center the animation within a full-screen box.
+    // Use the passed modifier instead of fillMaxSize()
     Box(
-        modifier = Modifier.fillMaxSize(),
+        modifier = modifier,
         contentAlignment = Alignment.Center
     ) {
         LottieAnimation(
             composition = composition,
-            progress = { animationState.progress } // Control progress via animation state.
+            progress = { animationState.progress }
         )
     }
 }
