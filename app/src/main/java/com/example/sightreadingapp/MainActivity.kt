@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -13,7 +14,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.navigation.compose.*
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -23,8 +26,8 @@ data class Question(
     val noteResource: Int,  // Drawable resource for the Treble Clef note.
     val options: List<String>,
     val correctAnswer: String
-
 )
+
 enum class NoteOptions(val note: String) {
     A("A"),
     B("B"),
@@ -34,11 +37,13 @@ enum class NoteOptions(val note: String) {
     F("F"),
     G("G");
 }
+
 enum class Accidentals(val accident: String){
     NONE(""),
     FLAT("♭"),
     SHARP("♯")
 }
+
 // chose an enum for both of these to enforce consistency
 enum class NoteResourcesAndAnswer(val correctNote: NoteOptions, val correctAccidental: Accidentals, val drawableResource: Int) {
     TREBLE_NOTE_A_LEDGER(NoteOptions.A, Accidentals.NONE, R.drawable.treble_note_a_ledger),
@@ -79,8 +84,7 @@ enum class NoteResourcesAndAnswer(val correctNote: NoteOptions, val correctAccid
     TREBLE_NOTE_F_TOP_LINE_SHARP(NoteOptions.F, Accidentals.SHARP, R.drawable.treble_note_f_top_line_sharp),
     TREBLE_NOTE_G_ABOVE_SHARP(NoteOptions.G, Accidentals.SHARP, R.drawable.treble_note_g_above_sharp),
     TREBLE_NOTE_G_LINE_SHARP(NoteOptions.G, Accidentals.SHARP, R.drawable.treble_note_g_line_sharp),
-} // added accidentals to the scheme and now its 12 per type as we went lower
-
+}
 
 // --- Data Model for a Leaderboard Entry ---
 data class LeaderboardEntry(val name: String, val score: Int)
@@ -94,20 +98,21 @@ class MainActivity : ComponentActivity() {
                 val context = LocalContext.current
 
                 // Retrieve the current profile from persistent storage.
-
                 val currentProfileId = ProfileRepository.getCurrentProfileId(context)
-                var userProfile by remember { mutableStateOf(ProfileRepository.getProfileById(context, currentProfileId)) }
+                var userProfile by remember {
+                    mutableStateOf(ProfileRepository.getProfileById(context, currentProfileId))
+                }
 
                 // Navigation graph: Welcome, Quiz, and Leaderboard screens.
                 NavHost(navController = navController, startDestination = "welcome") {
                     composable("welcome") {
-                        WelcomeScreen(userProfile?.name ?: "User",
+                        WelcomeScreen(
+                            userProfile?.name ?: "User",
                             onStartClicked = { navController.navigate("quiz") },
-                            onNoteQuizClicked = { navController.navigate("noteBuilder") })
+                            onNoteQuizClicked = { navController.navigate("noteBuilder") }
+                        )
                     }
-                    composable("noteBuilder"){
-                        // just copied other probably could just make
-                        // updateScore a function for quiz controllers
+                    composable("noteBuilder") {
                         noteBuilder(
                             onQuizFinished = {
                                 // Refresh the profile after the quiz.
@@ -115,13 +120,11 @@ class MainActivity : ComponentActivity() {
                                 navController.navigate("leaderboard")
                             },
                             updateScore = { points ->
-                                // Update the profile's score both in memory and in persistent storage.
                                 val updatedScore = (userProfile?.score ?: 0) + points
                                 userProfile = userProfile?.copy(score = updatedScore)
                                 userProfile?.let { ProfileRepository.updateProfileScore(context, it.id, updatedScore) }
                             }
                         )
-
                     }
                     composable("quiz") {
                         QuizScreen(
@@ -131,7 +134,6 @@ class MainActivity : ComponentActivity() {
                                 navController.navigate("leaderboard")
                             },
                             updateScore = { points ->
-                                // Update the profile's score both in memory and in persistent storage.
                                 val updatedScore = (userProfile?.score ?: 0) + points
                                 userProfile = userProfile?.copy(score = updatedScore)
                                 userProfile?.let { ProfileRepository.updateProfileScore(context, it.id, updatedScore) }
@@ -155,7 +157,11 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun WelcomeScreen(userName: String, onStartClicked: () -> Unit, onNoteQuizClicked: () -> Unit) {
+fun WelcomeScreen(
+    userName: String,
+    onStartClicked: () -> Unit,
+    onNoteQuizClicked: () -> Unit
+) {
     Scaffold { paddingValues ->
         Column(
             modifier = Modifier
@@ -171,56 +177,52 @@ fun WelcomeScreen(userName: String, onStartClicked: () -> Unit, onNoteQuizClicke
                 Text("quiz")
             }
             Spacer(modifier = Modifier.height(16.dp))
-            Button(onClick = onNoteQuizClicked){
+            Button(onClick = onNoteQuizClicked) {
                 Text("Note Quiz")
             }
         }
     }
 }
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun noteBuilder(
     onQuizFinished: () -> Unit,
     updateScore: (Int) -> Unit
-){}
-// TODO make randomized quizzes
-// kinda useful funky green eye attractor
+) {
+    // TODO: Build out your noteBuilder content
+}
 
+// -----------------------------------
+// Quiz Screen with Progress Bar
+// -----------------------------------
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun QuizScreen(
     onQuizFinished: () -> Unit,
     updateScore: (Int) -> Unit
 ) {
-    val availableQuestions = mutableListOf(*NoteResourcesAndAnswer.entries.toTypedArray()) // gets List of all ResourcesAndAnswers of this type
-    val possibleNotes = listOf(*NoteOptions.entries.toTypedArray()) // gets a list of all NoteOptions
-    val possibleAccidents = listOf(*Accidentals.entries.toTypedArray()) // gets all types of accidentals
+    // 1. Define how many questions to generate
+    val totalQuestions = 10
+
+    val availableQuestions = mutableListOf(*NoteResourcesAndAnswer.entries.toTypedArray())
+    val possibleNotes = listOf(*NoteOptions.entries.toTypedArray())
+    val possibleAccidents = listOf(*Accidentals.entries.toTypedArray())
     var incrementingId: Int = 1
 
-    // Generate random question function
     fun generateRandomQuestion(): Question? {
-        if (availableQuestions.isEmpty()) {
-            return null
-        }
+        if (availableQuestions.isEmpty()) return null
 
-        val randomQuestion = availableQuestions.random() // Choose a random question
+        val randomQuestion = availableQuestions.random()
+        availableQuestions.remove(randomQuestion)
 
-        availableQuestions.remove(randomQuestion) // Remove it from the available questions list
-
-        // Extract the note and accidental from the random question
         val correctNote = randomQuestion.correctNote.note
         val correctAccidental = randomQuestion.correctAccidental.accident
 
-        // Choose 3 possible notes that are not the correct answer (by note and accidental)
         val shuffledNotes = possibleNotes.filter { it.note != correctNote }.take(3)
-
-
-        // Create a list of options by pairing each note with each accidental, keeping it to just 4 combinations (including the correct one)
-        val options = mutableListOf<Pair<String, String>>()
-
-        // Add the correct note/accidental to the options list
-        options.add(correctNote to correctAccidental)
-
+        val options = mutableListOf<Pair<String, String>>().apply {
+            add(correctNote to correctAccidental)
+        }
 
         val incorrectOptions = mutableListOf<Pair<String, String>>()
         for (note in shuffledNotes) {
@@ -228,124 +230,184 @@ fun QuizScreen(
                 incorrectOptions.add(note.note to accidental.accident)
             }
         }
-
-        // Randomly shuffle and take the first 3 incorrect options
         incorrectOptions.shuffle()
         options.addAll(incorrectOptions.take(3))
-
-        // Shuffle all the options to randomize their order
         options.shuffle()
 
         incrementingId++
-
-        // Return the question with the randomized options
         return Question(
             id = incrementingId,
             noteResource = randomQuestion.drawableResource,
-            options = options.map { "${it.first}${it.second}" }, // Combine note and accidental for options
-            correctAnswer = "$correctNote$correctAccidental" // Combine note and accidental for the correct answer
+            options = options.map { "${it.first}${it.second}" },
+            correctAnswer = "$correctNote$correctAccidental"
         )
     }
 
-
-
-    // State to manage current question and quiz state
+    // 2. Track current question, user attempts, etc.
     var currentQuestionIndex by remember { mutableIntStateOf(0) }
     var hasAttempted by remember { mutableStateOf(false) }
     var resultMessage by remember { mutableStateOf("") }
+    var feedbackAnimationRes by remember { mutableStateOf<Int?>(null) }
     val coroutineScope = rememberCoroutineScope()
 
-    // Create a list of questions dynamically
     val questions = remember { mutableStateListOf<Question>() }
-
-    // Flag to indicate whether the questions are ready
     var isQuestionsReady by remember { mutableStateOf(false) }
 
-    // Generate the questions when the screen first loads
+    // 3. Generate questions on first load
     LaunchedEffect(Unit) {
-        repeat(10) {
-            generateRandomQuestion()?.let { question ->
-                questions.add(question)
-            }
+        repeat(totalQuestions) {
+            generateRandomQuestion()?.let { question -> questions.add(question) }
         }
-        isQuestionsReady = true // sets the boolean to true when the questions are ready
+        isQuestionsReady = true
     }
 
     if (!isQuestionsReady) {
-        return // Returns early if questions aren't ready yet
+        return // Wait until questions are ready
     }
 
-    // gets the current question
     val currentQuestion = questions.getOrNull(currentQuestionIndex)
-
-    // ends the quiz when everything is answered
     if (currentQuestion == null) {
+        // No more questions, finish quiz
+        feedbackAnimationRes = null
         onQuizFinished()
         return
     }
 
+    // 4. Show a top bar with a progress bar
     Scaffold(
-        topBar = { TopAppBar(title = { Text("Quiz") }) }
-    ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            // Display the current question's note
-            Image(
-                painter = painterResource(id = currentQuestion.noteResource),
-                contentDescription = "Treble Clef Note",
-                modifier = Modifier.size(250.dp)
-            )
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Display answer options
-            currentQuestion.options.forEach { option ->
-                Button(
-                    onClick = {
-                        if (!hasAttempted) {
-                            hasAttempted = true
-                            if (option == currentQuestion.correctAnswer) {
-                                resultMessage = "Correct!"
-                                updateScore(10)
-                                coroutineScope.launch {
-                                    delay(1000L)
-                                    currentQuestionIndex++
-                                    hasAttempted = false
-                                    resultMessage = ""
-                                }
-                            } else {
-                                resultMessage = "Wrong! Correct answer: ${currentQuestion.correctAnswer}"
-                                coroutineScope.launch {
-                                    delay(2000L)
-                                    currentQuestionIndex++
-                                    hasAttempted = false
-                                    resultMessage = ""
-                                }
-                            }
-                        }
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 4.dp)
-                ) {
-                    Text(option)
+        topBar = {
+            TopAppBar(
+                title = {
+                    Column {
+                        Text("Quiz")
+                        // Duolingo-like progress bar showing “Question X of Y”
+                        QuizProgressBar(
+                            currentQuestionIndex = currentQuestionIndex,
+                            totalQuestions = totalQuestions
+                        )
+                    }
                 }
-            }
-            if (resultMessage.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(resultMessage)
+            )
+        }
+    ) { paddingValues ->
+        Box(modifier = Modifier.fillMaxSize()) {
+            // If we do NOT have an active animation, show the quiz UI
+            if (feedbackAnimationRes == null) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues)
+                        .padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    // Display the question’s note
+                    Image(
+                        painter = painterResource(id = currentQuestion.noteResource),
+                        contentDescription = "Treble Clef Note",
+                        modifier = Modifier.size(250.dp)
+                    )
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    val context = LocalContext.current
+
+                    // Answer options
+                    currentQuestion.options.forEach { option ->
+                        Button(
+                            onClick = {
+                                if (!hasAttempted) {
+                                    hasAttempted = true
+                                    if (option == currentQuestion.correctAnswer) {
+                                        resultMessage = "Correct!"
+                                        updateScore(10)
+                                        playSound(context, R.raw.right_answer)
+                                        feedbackAnimationRes = R.raw.smile_correct
+                                    } else {
+                                        resultMessage = "Wrong! Correct answer: ${currentQuestion.correctAnswer}"
+                                        playSound(context, R.raw.incorrect_answer)
+                                        feedbackAnimationRes = R.raw.smile_incorrect
+                                    }
+                                }
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp)
+                        ) {
+                            Text(option)
+                        }
+                    }
+                }
+            } else {
+                // If we DO have an active animation, show the full-screen overlay
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.background),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        // Set a fixed size for the animation
+                        AnswerFeedbackAnimation(
+                            animationRes = feedbackAnimationRes!!,
+                            durationMillis = if (resultMessage.contains("Correct")) 2000L else 3000L,
+                            onAnimationEnd = {
+                                feedbackAnimationRes = null
+                                coroutineScope.launch {
+                                    delay(150L)
+                                    currentQuestionIndex++
+                                    hasAttempted = false
+                                    resultMessage = ""
+                                }
+                            },
+                            modifier = Modifier.size(250.dp)  // Use a fixed size instead of fillMaxSize()
+                        )
+                        // Display the result text below the animation
+                        if (resultMessage.isNotEmpty()) {
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                text = resultMessage,
+                                style = MaterialTheme.typography.titleLarge
+                            )
+                        }
+                    }
+                }
             }
         }
     }
 }
 
+// -----------------------------------
+// Simple Duolingo-like Progress Bar
+// -----------------------------------
+@Composable
+fun QuizProgressBar(
+    currentQuestionIndex: Int,
+    totalQuestions: Int
+) {
+    // Convert current question index to 1-based for user display
+    val currentNumber = currentQuestionIndex + 1
 
+    // Calculate progress as a fraction from 0.0 to 1.0
+    val progress = currentNumber.coerceAtMost(totalQuestions).toFloat() / totalQuestions
 
+    Column(modifier = Modifier.fillMaxWidth()) {
+        // Optional: “Question X of Y”
+        Text(
+            text = "Question $currentNumber of $totalQuestions",
+            style = MaterialTheme.typography.bodyMedium
+        )
+        // Linear progress bar
+        LinearProgressIndicator(
+            progress = progress,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 8.dp)
+        )
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

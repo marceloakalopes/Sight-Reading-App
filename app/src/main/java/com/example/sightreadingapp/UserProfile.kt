@@ -30,7 +30,7 @@ object ProfileRepository {
     fun getUserProfiles(context: Context): List<UserProfile> {
         val sharedPref = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val profiles = mutableListOf<UserProfile>()
-        for (i in 0 until 3) {
+        for (i in 0 until 6) {
             val name = sharedPref.getString("profile_${i}_name", null)
             if (name != null) {
                 val score = sharedPref.getInt("profile_${i}_score", 0)
@@ -121,7 +121,7 @@ fun ProfileSelectionScreen(onProfileSelected: (Int) -> Unit) {
     val context = LocalContext.current
     var profiles by remember { mutableStateOf(ProfileRepository.getUserProfiles(context)) }
     var newProfileName by remember { mutableStateOf("") }
-    val maxProfiles = 3
+    val maxProfiles = 6
 
     Column(
         modifier = Modifier
