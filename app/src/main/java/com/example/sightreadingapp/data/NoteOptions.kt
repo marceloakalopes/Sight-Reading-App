@@ -7,5 +7,6 @@ enum class NoteOptions(val note: String) {
     D("D"),
     E("E"),
     F("F"),
-    G("G");
+    G("G"),
+    NONESELECTED("");
 }
