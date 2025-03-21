@@ -145,10 +145,8 @@ fun QuizScreen(
             Image(
                 painter = painterResource(id = currentQuestion.noteResource),
                 contentDescription = "Treble Clef Note",
-                modifier = Modifier.size(250.dp)
+                modifier = Modifier.size(500.dp) // increased this so the image wont be super small
             )
-            Spacer(modifier = Modifier.height(24.dp))
-
             // Display answer options
             currentQuestion.options.forEach { option ->
                 Button(
