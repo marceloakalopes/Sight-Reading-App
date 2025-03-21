@@ -1,8 +1,8 @@
 package com.example.sightreadingapp
 
-import LeaderboardScreen
-import NoteBuilder
-import QuizScreen
+import com.example.sightreadingapp.ui.screens.LeaderboardScreen
+import com.example.sightreadingapp.ui.screens.NoteBuilder
+import com.example.sightreadingapp.ui.screens.QuizScreen
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -10,7 +10,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.compose.*
-import com.example.sightreadingapp.composables.WelcomeScreen
+import com.example.sightreadingapp.ui.screens.WelcomeScreen
 
 
 // --- Data Model for a Leaderboard Entry ---

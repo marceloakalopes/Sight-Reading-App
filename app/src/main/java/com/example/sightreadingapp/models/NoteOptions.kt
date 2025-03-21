@@ -1,4 +1,4 @@
-package com.example.sightreadingapp.data
+package com.example.sightreadingapp.models
 
 enum class NoteOptions(val note: String) {
     A("A"),

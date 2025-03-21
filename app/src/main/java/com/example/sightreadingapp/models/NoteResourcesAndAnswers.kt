@@ -1,4 +1,4 @@
-package com.example.sightreadingapp.data
+package com.example.sightreadingapp.models
 
 import com.example.sightreadingapp.R
 

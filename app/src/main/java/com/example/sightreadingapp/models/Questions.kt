@@ -1,4 +1,4 @@
-package com.example.sightreadingapp.data
+package com.example.sightreadingapp.models
 
 data class Question(
     val id: Int,

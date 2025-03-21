@@ -1,4 +1,4 @@
-package com.example.sightreadingapp.composables
+package com.example.sightreadingapp.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column

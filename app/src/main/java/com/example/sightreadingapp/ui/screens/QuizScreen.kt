@@ -1,18 +1,14 @@
-import android.content.ClipData.Item
+package com.example.sightreadingapp.ui.screens
+
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
@@ -30,58 +26,82 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.example.sightreadingapp.data.Accidentals
-import com.example.sightreadingapp.data.NoteOptions
-import com.example.sightreadingapp.data.NoteResourcesAndAnswer
-import com.example.sightreadingapp.data.Question
+import com.example.sightreadingapp.models.Accidentals
+import com.example.sightreadingapp.models.NoteOptions
+import com.example.sightreadingapp.models.NoteResourcesAndAnswer
+import com.example.sightreadingapp.models.Question
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun NoteBuilder(
+fun QuizScreen(
     onQuizFinished: () -> Unit,
     updateScore: (Int) -> Unit
-){
-
+) {
     val availableQuestions = mutableListOf(*NoteResourcesAndAnswer.entries.toTypedArray()) // gets List of all ResourcesAndAnswers of this type
-    val possibleNotes = listOf(*NoteOptions.entries.toTypedArray()).filterNot { it == NoteOptions.NONESELECTED } // gets a list of all NoteOptions
+    val possibleNotes = listOf(*NoteOptions.entries.toTypedArray()) // gets a list of all NoteOptions
     val possibleAccidents = listOf(*Accidentals.entries.toTypedArray()) // gets all types of accidentals
     var incrementingId: Int = 1
 
     // Generate random question function
-    fun chooseRandomQuestion(): Question? {
+    fun generateRandomQuestion(): Question? {
         if (availableQuestions.isEmpty()) {
             return null
         }
-        val randomQuestion = availableQuestions.random()
-        availableQuestions.remove(randomQuestion)
+
+        val randomQuestion = availableQuestions.random() // Choose a random question
+
+        availableQuestions.remove(randomQuestion) // Remove it from the available questions list
+
+        // Extract the note and accidental from the random question
         val correctNote = randomQuestion.correctNote.note
         val correctAccidental = randomQuestion.correctAccidental.accident
+
+        // Choose 3 possible notes that are not the correct answer (by note and accidental)
+        val shuffledNotes = possibleNotes.filter { it.note != correctNote }.take(3)
+
+
+        // Create a list of options by pairing each note with each accidental, keeping it to just 4 combinations (including the correct one)
         val options = mutableListOf<Pair<String, String>>()
+
+        // Add the correct note/accidental to the options list
+        options.add(correctNote to correctAccidental)
+
+
+        val incorrectOptions = mutableListOf<Pair<String, String>>()
+        for (note in shuffledNotes) {
+            for (accidental in possibleAccidents) {
+                incorrectOptions.add(note.note to accidental.accident)
+            }
+        }
+
+        // Randomly shuffle and take the first 3 incorrect options
+        incorrectOptions.shuffle()
+        options.addAll(incorrectOptions.take(3))
+
+        // Shuffle all the options to randomize their order
+        options.shuffle()
+
         incrementingId++
 
+        // Return the question with the randomized options
         return Question(
             id = incrementingId,
             noteResource = randomQuestion.drawableResource,
-            options = options.map { "${it.first}${it.second}" }, // redundant code  as there is like no options
-            correctAnswer = "$correctNote$correctAccidental"
+            options = options.map { "${it.first}${it.second}" }, // Combine note and accidental for options
+            correctAnswer = "$correctNote$correctAccidental" // Combine note and accidental for the correct answer
         )
-
-
     }
+
+
+
+    // State to manage current question and quiz state
     var currentQuestionIndex by remember { mutableIntStateOf(0) }
     var hasAttempted by remember { mutableStateOf(false) }
     var resultMessage by remember { mutableStateOf("") }
     val coroutineScope = rememberCoroutineScope()
-    var userAccident by remember { mutableStateOf<Accidentals?>(null) }
-    var userNote by remember { mutableStateOf<NoteOptions?>(null) }
-    var userAccidentString by remember { mutableStateOf<String>("") }
-    var userNoteString by remember { mutableStateOf<String>("") }
-    var userAnswerString by remember { mutableStateOf(mutableSetOf<Pair<String?, String?>>(Pair("", ""))) }
 
     // Create a list of questions dynamically
     val questions = remember { mutableStateListOf<Question>() }
@@ -92,7 +112,7 @@ fun NoteBuilder(
     // Generate the questions when the screen first loads
     LaunchedEffect(Unit) {
         repeat(10) {
-            chooseRandomQuestion()?.let { question ->
+            generateRandomQuestion()?.let { question ->
                 questions.add(question)
             }
         }
@@ -111,6 +131,7 @@ fun NoteBuilder(
         onQuizFinished()
         return
     }
+
     Scaffold(
         topBar = { TopAppBar(title = { Text("Quiz") }) }
     ) { paddingValues ->
@@ -122,68 +143,19 @@ fun NoteBuilder(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Text(
-                userAnswerString.toString().trim('{', '[', ']', '}', ',', '(', ')').replace(",", ""),
-                fontWeight = FontWeight.Bold,
-                fontSize = 24.sp
-            )
-            if (resultMessage.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(resultMessage)
-                userAccidentString = ""
-                userNoteString = ""
-            }
             // Display the current question's note
             Image(
                 painter = painterResource(id = currentQuestion.noteResource),
                 contentDescription = "Treble Clef Note",
                 modifier = Modifier.size(500.dp) // increased this so the image wont be super small
             )
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                Row {
-                possibleAccidents.forEach { accidentals ->
-                    Button( onClick = {
-                        userAccident = accidentals
-                        userAccidentString = userAccident!!.accident
-                    }) {
-                        Text(accidentals.toString())
-
-                        if (userAccident != null) {
-                            userAnswerString = mutableSetOf(userNoteString to userAccidentString)
-                        }
-                    }
-                }
-            }
-                FlowRow(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    possibleNotes.forEach { note ->
-                        Button(
-                            onClick = {
-                                userNote = note
-                                userNoteString = userNote!!.note
-                                userAnswerString = mutableSetOf(userNoteString to userAccidentString)
-                            },
-                            modifier = Modifier.padding(4.dp)
-                        ) {
-                            Text(note.toString())
-                        }
-                    }
-                }
-                Row {
-                    Button(onClick = {
+            // Display answer options
+            currentQuestion.options.forEach { option ->
+                Button(
+                    onClick = {
                         if (!hasAttempted) {
                             hasAttempted = true
-                            val submittedAnswer = userAnswerString.map { "${it.first}${it.second}" }.joinToString("")
-
-                            if (submittedAnswer == currentQuestion.correctAnswer) {
+                            if (option == currentQuestion.correctAnswer) {
                                 resultMessage = "Correct!"
                                 updateScore(10)
                                 coroutineScope.launch {
@@ -202,11 +174,17 @@ fun NoteBuilder(
                                 }
                             }
                         }
-
-                    }) {
-                        Text("Submit Answer")
-                    }
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp)
+                ) {
+                    Text(option)
                 }
+            }
+            if (resultMessage.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(resultMessage)
             }
         }
     }
