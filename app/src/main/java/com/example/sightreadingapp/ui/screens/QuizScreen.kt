@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -25,6 +26,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.example.sightreadingapp.models.Accidentals
@@ -101,7 +103,8 @@ fun QuizScreen(
     var currentQuestionIndex by remember { mutableIntStateOf(0) }
     var hasAttempted by remember { mutableStateOf(false) }
     var resultMessage by remember { mutableStateOf("") }
-    val coroutineScope = rememberCoroutineScope()
+    val coroutineScope = rememberCoroutineScope() // added to track the selected answer for color feedback
+    var selectedAnswer by remember { mutableStateOf<String?>(null) }
 
     // Create a list of questions dynamically
     val questions = remember { mutableStateListOf<Question>() }
@@ -155,6 +158,7 @@ fun QuizScreen(
                     onClick = {
                         if (!hasAttempted) {
                             hasAttempted = true
+                            selectedAnswer = option // record user's selection (added for answer color feedback)
                             if (option == currentQuestion.correctAnswer) {
                                 resultMessage = "Correct!"
                                 updateScore(10)
@@ -163,6 +167,7 @@ fun QuizScreen(
                                     currentQuestionIndex++
                                     hasAttempted = false
                                     resultMessage = ""
+                                    selectedAnswer = null // reset the answer selection
                                 }
                             } else {
                                 resultMessage = "Wrong! Correct answer: ${currentQuestion.correctAnswer}"
@@ -171,10 +176,19 @@ fun QuizScreen(
                                     currentQuestionIndex++
                                     hasAttempted = false
                                     resultMessage = ""
+                                    selectedAnswer = null // reset the answer selection
                                 }
                             }
                         }
                     },
+                    colors = ButtonDefaults.buttonColors( // leaves button background color based on the answer selection
+                        containerColor = when {
+                            selectedAnswer == null -> ButtonDefaults.buttonColors().containerColor // color is not selected yet, so use the default color
+                            selectedAnswer == option && option == currentQuestion.correctAnswer -> Color.Green // if this button is selected and the answer is correct, show green
+                            selectedAnswer == option && option != currentQuestion.correctAnswer -> Color.Red  // if this button is selected and the answer is correct, show red
+                            else -> ButtonDefaults.buttonColors().containerColor // else using the default color
+                        }
+                    ),
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 4.dp)
