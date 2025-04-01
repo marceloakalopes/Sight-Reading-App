@@ -16,8 +16,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 @Composable
-fun WelcomeScreen(userName: String, onStartClicked: () -> Unit, onNoteQuizClicked: () -> Unit) {
-    Scaffold { paddingValues ->
+fun WelcomeScreen(userName: String, onStartClicked: () -> Unit, onNoteQuizClicked: () -> Unit, onLeaderBoardClick: () -> Unit) {
+    Scaffold() { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -27,7 +27,7 @@ fun WelcomeScreen(userName: String, onStartClicked: () -> Unit, onNoteQuizClicke
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text("Welcome back, $userName", fontSize = 24.sp)
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(18.dp))
             Button(onClick = onStartClicked) {
                 Text("quiz")
             }
@@ -35,6 +35,11 @@ fun WelcomeScreen(userName: String, onStartClicked: () -> Unit, onNoteQuizClicke
             Button(onClick = onNoteQuizClicked){
                 Text("Note Quiz")
             }
+            Spacer(modifier = Modifier.height(16.dp))
+            Button(onClick = onLeaderBoardClick){
+                Text("Leaderboard")
+            }
+
         }
     }
 }

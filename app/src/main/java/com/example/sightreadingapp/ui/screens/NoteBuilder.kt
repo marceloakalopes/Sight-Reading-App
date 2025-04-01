@@ -124,9 +124,8 @@ fun NoteBuilder(
                 fontWeight = FontWeight.Bold,
                 fontSize = 24.sp
             )
+            Text(resultMessage)
             if (resultMessage.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(resultMessage)
                 userAccidentString = ""
                 userNoteString = ""
             }
@@ -134,7 +133,7 @@ fun NoteBuilder(
             Image(
                 painter = painterResource(id = currentQuestion.noteResource),
                 contentDescription = "Treble Clef Note",
-                modifier = Modifier.size(500.dp) // increased this so the image wont be super small
+                modifier = Modifier.size(450.dp) // increased this so the image wont be super small
             )
             Column(
                 modifier = Modifier
@@ -168,7 +167,7 @@ fun NoteBuilder(
                                 userNoteString = userNote!!.note
                                 userAnswerString = mutableSetOf(userNoteString to userAccidentString)
                             },
-                            modifier = Modifier.padding(4.dp)
+                            modifier = Modifier.padding(2.dp)
                         ) {
                             Text(note.toString())
                         }

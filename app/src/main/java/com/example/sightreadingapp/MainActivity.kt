@@ -34,7 +34,9 @@ class MainActivity : ComponentActivity() {
                     composable("welcome") {
                         WelcomeScreen(userProfile?.name ?: "User",
                             onStartClicked = { navController.navigate("quiz") },
-                            onNoteQuizClicked = { navController.navigate("noteBuilder") })
+                            onNoteQuizClicked = { navController.navigate("noteBuilder") },
+                            onLeaderBoardClick = {navController.navigate("leaderboard")}
+                            )
                     }
                     composable("noteBuilder"){
                         // just copied other probably could just make
