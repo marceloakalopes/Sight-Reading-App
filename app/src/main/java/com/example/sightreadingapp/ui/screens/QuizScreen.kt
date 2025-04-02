@@ -27,10 +27,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
-import com.example.sightreadingapp.models.Accidentals
-import com.example.sightreadingapp.models.NoteOptions
-import com.example.sightreadingapp.models.NoteResourcesAndAnswer
-import com.example.sightreadingapp.models.Question
+import com.example.sightreadingapp.data.models.Question
+import com.example.sightreadingapp.data.models.Accidentals
+import com.example.sightreadingapp.data.models.NoteOptions
+import com.example.sightreadingapp.data.models.NoteResourcesAndAnswer
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -38,37 +38,29 @@ import kotlinx.coroutines.launch
 @Composable
 fun QuizScreen(
     onQuizFinished: () -> Unit,
-    updateScore: (Int) -> Unit
+    updateScore: (Int) -> Unit,
 ) {
-    val availableQuestions = mutableListOf(*NoteResourcesAndAnswer.entries.toTypedArray()) // gets List of all ResourcesAndAnswers of this type
-    val possibleNotes = listOf(*NoteOptions.entries.toTypedArray()) // gets a list of all NoteOptions
-    val possibleAccidents = listOf(*Accidentals.entries.toTypedArray()) // gets all types of accidentals
-    var incrementingId: Int = 1
+    // Remember these so they persist across recompositions.
+    val availableQuestions = remember { mutableListOf(*NoteResourcesAndAnswer.entries.toTypedArray()) }
+    val possibleNotes = remember { listOf(*NoteOptions.entries.toTypedArray()) }
+    val possibleAccidents = remember { listOf(*Accidentals.entries.toTypedArray()) }
+    var incrementingId by remember { mutableIntStateOf(1) }
 
-    // Generate random question function
+    // Generate random question function.
     fun generateRandomQuestion(): Question? {
         if (availableQuestions.isEmpty()) {
             return null
         }
 
-        val randomQuestion = availableQuestions.random() // Choose a random question
+        val randomQuestion = availableQuestions.random()
+        availableQuestions.remove(randomQuestion)
 
-        availableQuestions.remove(randomQuestion) // Remove it from the available questions list
-
-        // Extract the note and accidental from the random question
         val correctNote = randomQuestion.correctNote.note
         val correctAccidental = randomQuestion.correctAccidental.accident
 
-        // Choose 3 possible notes that are not the correct answer (by note and accidental)
         val shuffledNotes = possibleNotes.filter { it.note != correctNote }.take(3)
-
-
-        // Create a list of options by pairing each note with each accidental, keeping it to just 4 combinations (including the correct one)
         val options = mutableListOf<Pair<String, String>>()
-
-        // Add the correct note/accidental to the options list
         options.add(correctNote to correctAccidental)
-
 
         val incorrectOptions = mutableListOf<Pair<String, String>>()
         for (note in shuffledNotes) {
@@ -76,59 +68,53 @@ fun QuizScreen(
                 incorrectOptions.add(note.note to accidental.accident)
             }
         }
-
-        // Randomly shuffle and take the first 3 incorrect options
         incorrectOptions.shuffle()
         options.addAll(incorrectOptions.take(3))
-
-        // Shuffle all the options to randomize their order
         options.shuffle()
 
         incrementingId++
 
-        // Return the question with the randomized options
         return Question(
             id = incrementingId,
             noteResource = randomQuestion.drawableResource,
-            options = options.map { "${it.first}${it.second}" }, // Combine note and accidental for options
-            correctAnswer = "$correctNote$correctAccidental" // Combine note and accidental for the correct answer
+            options = options.map { "${it.first}${it.second}" },
+            correctAnswer = "$correctNote$correctAccidental"
         )
     }
 
-
-
-    // State to manage current question and quiz state
     var currentQuestionIndex by remember { mutableIntStateOf(0) }
     var hasAttempted by remember { mutableStateOf(false) }
     var resultMessage by remember { mutableStateOf("") }
     val coroutineScope = rememberCoroutineScope()
 
-    // Create a list of questions dynamically
+    // Create a list of questions dynamically.
     val questions = remember { mutableStateListOf<Question>() }
 
-    // Flag to indicate whether the questions are ready
+    // Flag to indicate whether the questions are ready.
     var isQuestionsReady by remember { mutableStateOf(false) }
 
-    // Generate the questions when the screen first loads
+    // Generate the questions when the screen first loads.
     LaunchedEffect(Unit) {
         repeat(10) {
             generateRandomQuestion()?.let { question ->
                 questions.add(question)
             }
         }
-        isQuestionsReady = true // sets the boolean to true when the questions are ready
+        isQuestionsReady = true
     }
 
     if (!isQuestionsReady) {
-        return // Returns early if questions aren't ready yet
+        return // Return early if questions aren't ready yet.
     }
 
-    // gets the current question
+    // Get the current question.
     val currentQuestion = questions.getOrNull(currentQuestionIndex)
 
-    // ends the quiz when everything is answered
+    // End the quiz when all questions have been answered.
     if (currentQuestion == null) {
-        onQuizFinished()
+        LaunchedEffect(Unit) {
+            onQuizFinished()
+        }
         return
     }
 
@@ -143,13 +129,13 @@ fun QuizScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            // Display the current question's note
+            // Display the current question's note.
             Image(
                 painter = painterResource(id = currentQuestion.noteResource),
                 contentDescription = "Treble Clef Note",
-                modifier = Modifier.size(500.dp) // increased this so the image wont be super small
+                modifier = Modifier.size(500.dp)
             )
-            // Display answer options
+            // Display answer options.
             currentQuestion.options.forEach { option ->
                 Button(
                     onClick = {

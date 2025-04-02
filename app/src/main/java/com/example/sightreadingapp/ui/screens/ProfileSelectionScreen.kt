@@ -1,116 +1,81 @@
 package com.example.sightreadingapp.ui.screens
 
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import com.example.sightreadingapp.ProfileRepository
-import com.example.sightreadingapp.UserProfile
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.sightreadingapp.data.models.UserProfile
+import com.example.sightreadingapp.ui.viewmodel.ProfileSelectionViewModel
+import com.example.sightreadingapp.ui.viewmodel.ProfileSelectionViewModelFactory
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ProfileSelectionScreen(onProfileSelected: (Int) -> Unit) {
-    val context = LocalContext.current
-    var profiles by remember { mutableStateOf(ProfileRepository.getUserProfiles(context)) }
-    var newProfileName by remember { mutableStateOf("") }
-    val maxProfiles = 3
+fun ProfileSelectionScreen(
+    parentId: String,
+    onProfileSelected: (UserProfile) -> Unit,
+    viewModel: ProfileSelectionViewModel = viewModel(
+        factory = ProfileSelectionViewModelFactory(parentId)
+    )
+) {
+    val uiState by viewModel.uiState.collectAsState()
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-    ) {
-        Text("Select or Create a Profile", style = MaterialTheme.typography.headlineMedium)
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Display the list of existing profiles.
-        if (profiles.isNotEmpty()) {
-            LazyColumn(modifier = Modifier.weight(1f)) {
-                items(profiles) { profile ->
+    Scaffold(
+        topBar = { TopAppBar(title = { Text("Kid Profiles") }) },
+        floatingActionButton = {
+            // Only show FAB if there are fewer than 6 profiles.
+            if (uiState.profiles.size < 6) {
+                FloatingActionButton(onClick = { viewModel.createProfile() }) {
+                    Text("+")
+                }
+            }
+        }
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .padding(16.dp)
+        ) {
+            OutlinedTextField(
+                value = uiState.newProfileName,
+                onValueChange = viewModel::onNewProfileNameChanged,
+                label = { Text("New Kid Name") },
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            LazyColumn {
+                items(uiState.profiles) { profile ->
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 4.dp)
+                            .padding(vertical = 4.dp),
+                        onClick = { viewModel.selectProfile(profile, onProfileSelected) }
                     ) {
                         Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
+                            modifier = Modifier.padding(16.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            // Tapping the text selects the profile.
-                            Column(modifier = Modifier
-                                .weight(1f)
-                                .clickable { onProfileSelected(profile.id) }
-                            ) {
-                                Text(profile.name, style = MaterialTheme.typography.titleMedium)
-                                Text("Score: ${profile.score}", style = MaterialTheme.typography.bodySmall)
-                            }
-                            // Delete icon button for removing a profile.
-                            IconButton(onClick = {
-                                ProfileRepository.deleteUserProfile(context, profile.id)
-                                profiles = ProfileRepository.getUserProfiles(context)
-                            }) {
-                                Icon(
-                                    imageVector = Icons.Default.Delete,
-                                    contentDescription = "Delete Profile"
-                                )
-                            }
+                            Text(
+                                text = profile.name,
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                            Spacer(modifier = Modifier.weight(1f))
+                            Text(text = "Score: ${profile.score}")
                         }
                     }
                 }
             }
-        } else {
-            Text("No profiles found. Create one below.", style = MaterialTheme.typography.bodyLarge)
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-        // Allow creating a new profile if there is room.
-        if (profiles.size < maxProfiles) {
-            OutlinedTextField(
-                value = newProfileName,
-                onValueChange = { newProfileName = it },
-                label = { Text("New Profile Name") },
-                modifier = Modifier.fillMaxWidth()
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Button(
-                onClick = {
-                    if (newProfileName.isNotBlank()) {
-                        // Find the first available ID among 0, 1, and 2.
-                        val newId = (0 until maxProfiles).first { id -> profiles.none { it.id == id } }
-                        val newProfile = UserProfile(newId, newProfileName.trim(), 0)
-                        ProfileRepository.saveUserProfile(context, newProfile)
-                        profiles = ProfileRepository.getUserProfiles(context)
-                        newProfileName = ""
-                    }
-                },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Create Profile")
+            if (uiState.errorMessage.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = uiState.errorMessage,
+                    color = MaterialTheme.colorScheme.error
+                )
             }
         }
     }
